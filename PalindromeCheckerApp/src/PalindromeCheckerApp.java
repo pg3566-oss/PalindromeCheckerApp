@@ -1,143 +1,124 @@
 import java.util.Deque;
 import java.util.LinkedList;
-import java.util.Queue;
 import java.util.Scanner;
 import java.util.Stack;
 
 public class PalindromeCheckerApp {
 
     /**
-     * UC12: Strategy Pattern for Palindrome Algorithms
-     * Choose palindrome algorithm dynamically at runtime.
+     * UC13: Performance Comparison
+     * Compares different palindrome approaches using System.nanoTime()
      */
 
     public static void main(String[] args) {
 
         Scanner sc = new Scanner(System.in);
 
-        System.out.print("Enter a string to check palindrome: ");
+        System.out.print("Enter a string to benchmark palindrome algorithms: ");
         String input = sc.nextLine();
 
-        System.out.println("\nChoose Strategy:");
-        System.out.println("1. Stack Strategy (Reverse using Stack)");
-        System.out.println("2. Deque Strategy (Compare front & rear)");
-        System.out.print("Enter choice (1/2): ");
+        // (Optional) repeat count to make timings more stable
+        int iterations = 50_000;
 
-        int choice;
-        try {
-            choice = Integer.parseInt(sc.nextLine().trim());
-        } catch (Exception e) {
-            choice = 2; // default
-        }
+        System.out.println("\nIterations per algorithm: " + iterations);
+        System.out.println("Input length: " + input.length());
+        System.out.println();
 
-        PalindromeStrategy strategy;
-        if (choice == 1) {
-            strategy = new StackStrategy();
-        } else {
-            strategy = new DequeStrategy();
-        }
-
-        // Inject strategy into service
-        PalindromeService service = new PalindromeService(strategy);
-
-        boolean result = service.check(input);
-
-        if (result) {
-            System.out.println("\n\"" + input + "\" is a Palindrome ✅");
-        } else {
-            System.out.println("\n\"" + input + "\" is NOT a Palindrome ❌");
-        }
-
-        System.out.println("Strategy used: " + strategy.name());
+        benchmark("Char[] Two-Pointer (UC4)", iterations, () -> isPalindromeCharTwoPointer(input));
+        benchmark("Reverse using String + (UC3)", iterations, () -> isPalindromeReverseConcat(input));
+        benchmark("Stack Strategy (UC5)", iterations, () -> isPalindromeStack(input));
+        benchmark("Deque Strategy (UC7)", iterations, () -> isPalindromeDeque(input));
 
         sc.close();
     }
-}
 
-/**
- * Strategy interface (contract)
- */
-interface PalindromeStrategy {
-    boolean isPalindrome(String input);
-    String name();
-}
+    // ---------- Benchmark Helper ----------
 
-/**
- * Context / Service class that uses a strategy.
- * Demonstrates Dependency Injection at runtime.
- */
-class PalindromeService {
+    private static void benchmark(String name, int iterations, Algo algo) {
 
-    private final PalindromeStrategy strategy;
+        // warm-up (helps reduce first-run noise)
+        for (int i = 0; i < 5_000; i++) {
+            algo.run();
+        }
 
-    public PalindromeService(PalindromeStrategy strategy) {
-        this.strategy = strategy;
+        long start = System.nanoTime();
+
+        boolean lastResult = false;
+        for (int i = 0; i < iterations; i++) {
+            lastResult = algo.run();
+        }
+
+        long end = System.nanoTime();
+        long totalNs = end - start;
+
+        double avgNs = (double) totalNs / iterations;
+        double totalMs = totalNs / 1_000_000.0;
+
+        System.out.printf("%-28s | Result: %-5s | Total: %10.3f ms | Avg: %10.2f ns%n",
+                name, lastResult, totalMs, avgNs);
     }
 
-    public boolean check(String input) {
-        return strategy.isPalindrome(input);
+    @FunctionalInterface
+    interface Algo {
+        boolean run();
     }
-}
 
-/**
- * Strategy 1: Stack-based palindrome check (UC5 concept)
- */
-class StackStrategy implements PalindromeStrategy {
+    // ---------- Algorithms ----------
 
-    @Override
-    public boolean isPalindrome(String input) {
+    // UC4 style: convert to char[] and compare with two pointers
+    private static boolean isPalindromeCharTwoPointer(String input) {
+        if (input == null) return false;
+
+        char[] arr = input.toCharArray();
+        int start = 0;
+        int end = arr.length - 1;
+
+        while (start < end) {
+            if (arr[start] != arr[end]) return false;
+            start++;
+            end--;
+        }
+        return true;
+    }
+
+    // UC3 style: reverse using String concatenation (intentionally less efficient)
+    private static boolean isPalindromeReverseConcat(String input) {
+        if (input == null) return false;
+
+        String reversed = "";
+        for (int i = input.length() - 1; i >= 0; i--) {
+            reversed = reversed + input.charAt(i);
+        }
+        return input.equals(reversed);
+    }
+
+    // UC5 style: Stack<Character>
+    private static boolean isPalindromeStack(String input) {
         if (input == null) return false;
 
         Stack<Character> stack = new Stack<>();
-
         for (int i = 0; i < input.length(); i++) {
             stack.push(input.charAt(i));
         }
 
         for (int i = 0; i < input.length(); i++) {
-            if (input.charAt(i) != stack.pop()) {
-                return false;
-            }
+            if (input.charAt(i) != stack.pop()) return false;
         }
-
         return true;
     }
 
-    @Override
-    public String name() {
-        return "StackStrategy (LIFO reversal)";
-    }
-}
-
-/**
- * Strategy 2: Deque-based palindrome check (UC7 concept)
- */
-class DequeStrategy implements PalindromeStrategy {
-
-    @Override
-    public boolean isPalindrome(String input) {
+    // UC7 style: Deque<Character> compare front and rear
+    private static boolean isPalindromeDeque(String input) {
         if (input == null) return false;
 
         Deque<Character> deque = new LinkedList<>();
-
         for (int i = 0; i < input.length(); i++) {
             deque.addLast(input.charAt(i));
         }
 
         while (deque.size() > 1) {
-            char front = deque.removeFirst();
-            char rear = deque.removeLast();
-
-            if (front != rear) {
-                return false;
-            }
+            if (deque.removeFirst() != deque.removeLast()) return false;
         }
-
         return true;
-    }
-
-    @Override
-    public String name() {
-        return "DequeStrategy (front-rear compare)";
     }
 }

@@ -1,10 +1,14 @@
+import java.util.Deque;
+import java.util.LinkedList;
+import java.util.Queue;
 import java.util.Scanner;
+import java.util.Stack;
 
 public class PalindromeCheckerApp {
 
     /**
-     * UC11: Object-Oriented Palindrome Service
-     * Main app calls a service class (PalindromeChecker)
+     * UC12: Strategy Pattern for Palindrome Algorithms
+     * Choose palindrome algorithm dynamically at runtime.
      */
 
     public static void main(String[] args) {
@@ -14,53 +18,126 @@ public class PalindromeCheckerApp {
         System.out.print("Enter a string to check palindrome: ");
         String input = sc.nextLine();
 
-        // Create service object
-        PalindromeChecker checker = new PalindromeChecker();
+        System.out.println("\nChoose Strategy:");
+        System.out.println("1. Stack Strategy (Reverse using Stack)");
+        System.out.println("2. Deque Strategy (Compare front & rear)");
+        System.out.print("Enter choice (1/2): ");
 
-        // Call service method
-        boolean result = checker.checkPalindrome(input);
+        int choice;
+        try {
+            choice = Integer.parseInt(sc.nextLine().trim());
+        } catch (Exception e) {
+            choice = 2; // default
+        }
+
+        PalindromeStrategy strategy;
+        if (choice == 1) {
+            strategy = new StackStrategy();
+        } else {
+            strategy = new DequeStrategy();
+        }
+
+        // Inject strategy into service
+        PalindromeService service = new PalindromeService(strategy);
+
+        boolean result = service.check(input);
 
         if (result) {
-            System.out.println("\"" + input + "\" is a Palindrome");
+            System.out.println("\n\"" + input + "\" is a Palindrome ✅");
         } else {
-            System.out.println("\"" + input + "\" is NOT a Palindrome");
+            System.out.println("\n\"" + input + "\" is NOT a Palindrome ❌");
         }
+
+        System.out.println("Strategy used: " + strategy.name());
 
         sc.close();
     }
 }
 
 /**
- * PalindromeChecker class encapsulates palindrome logic.
- * Demonstrates Encapsulation + Single Responsibility Principle.
+ * Strategy interface (contract)
  */
-class PalindromeChecker {
+interface PalindromeStrategy {
+    boolean isPalindrome(String input);
+    String name();
+}
 
-    /**
-     * Public service method exposed to the outside world.
-     * Internally uses char[] + two-pointer approach.
-     */
-    public boolean checkPalindrome(String input) {
+/**
+ * Context / Service class that uses a strategy.
+ * Demonstrates Dependency Injection at runtime.
+ */
+class PalindromeService {
 
-        if (input == null) {
-            return false;
+    private final PalindromeStrategy strategy;
+
+    public PalindromeService(PalindromeStrategy strategy) {
+        this.strategy = strategy;
+    }
+
+    public boolean check(String input) {
+        return strategy.isPalindrome(input);
+    }
+}
+
+/**
+ * Strategy 1: Stack-based palindrome check (UC5 concept)
+ */
+class StackStrategy implements PalindromeStrategy {
+
+    @Override
+    public boolean isPalindrome(String input) {
+        if (input == null) return false;
+
+        Stack<Character> stack = new Stack<>();
+
+        for (int i = 0; i < input.length(); i++) {
+            stack.push(input.charAt(i));
         }
 
-        // Convert to char[] for index-based access
-        char[] arr = input.toCharArray();
-
-        int start = 0;
-        int end = arr.length - 1;
-
-        // Two-pointer comparison
-        while (start < end) {
-            if (arr[start] != arr[end]) {
+        for (int i = 0; i < input.length(); i++) {
+            if (input.charAt(i) != stack.pop()) {
                 return false;
             }
-            start++;
-            end--;
         }
 
         return true;
+    }
+
+    @Override
+    public String name() {
+        return "StackStrategy (LIFO reversal)";
+    }
+}
+
+/**
+ * Strategy 2: Deque-based palindrome check (UC7 concept)
+ */
+class DequeStrategy implements PalindromeStrategy {
+
+    @Override
+    public boolean isPalindrome(String input) {
+        if (input == null) return false;
+
+        Deque<Character> deque = new LinkedList<>();
+
+        for (int i = 0; i < input.length(); i++) {
+            deque.addLast(input.charAt(i));
+        }
+
+        while (deque.size() > 1) {
+            char front = deque.removeFirst();
+            char rear = deque.removeLast();
+
+            if (front != rear) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    @Override
+    public String name() {
+        return "DequeStrategy (front-rear compare)";
     }
 }
